@@ -97,6 +97,22 @@ MONGO_URI=
 
 ---
 
+## Github Secrets
+
+Add the following secrets to your repository:
+
+```bash
+DOCKER_USERNAME
+DOCKER_PASSWORD
+IMAGE_NAME
+IMAGE_TAG
+PROD_SERVER_HOST
+PROD_SSH_PRIVATE_KEY
+SERVER_USER
+```
+
+---
+
 ## 📂 Project Structure (Simplified)
 
 ```
