@@ -1,0 +1,68 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: bot-payment
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=prod-latest" >> $GITHUB_ENV
+
+      - name: Build and Push Image
+        run: |
+          docker buildx build \
+            --tag ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --push .
+
+  deploy:
+    name: Deploy to Server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH into Server and Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          script: |
+            echo "Navigating to deployment directory..."
+            cd /home/${{ secrets.SERVER_USER }}/bot-payment
+            
+            echo "Logging into Docker Hub..."
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+            
+            echo "Pulling latest image..."
+            docker pull ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:prod-latest
+            
+            echo "Stopping and removing existing containers..."
+            docker-compose down
+            
+            echo "Applying latest changes with docker-compose..."
+            docker-compose up -d --remove-orphans
+            
+            echo "Cleaning up old Docker images..."
+            docker image prune -f
+            
+            echo "Deployment completed successfully!"

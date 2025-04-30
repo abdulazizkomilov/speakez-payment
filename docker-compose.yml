@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  backend:
+    image: ${IMAGE_NAME}
+    build:
+      context: .
+    restart: always
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - static-data:/app/staticfiles
+    environment:
+      - SECRET_KEY_DJANGO=${SECRET_KEY_DJANGO}
+      - SITE=${SITE}
+      - SITE_URL_API=${SITE_URL_API}
+      - DEBUG_DJANGO=${DEBUG_DJANGO}
+      - ALLOWED_HOSTS_DJANGO=${ALLOWED_HOSTS_DJANGO}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - PAYME_ID=${PAYME_ID}
+      - PAYME_KEY=${PAYME_KEY}
+      - PAYME_KEY_TEST=${PAYME_KEY_TEST}
+      - PAYME_ACCOUNT_FIELD=${PAYME_ACCOUNT_FIELD}
+      - PAYME_AMOUNT_FIELD=${PAYME_AMOUNT_FIELD}
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: always
+
+volumes:
+  db-data:
+  static-data:
+
+networks:
+  backend:
+    driver: bridge
